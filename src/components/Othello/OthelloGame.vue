@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import randomStr from '@/libs/generator'
+import GameChannel from '@/libs/rtc'
 
 enum CellValue {
   EMPTY,
@@ -7,24 +10,69 @@ enum CellValue {
   BLACK
 }
 
-const game = ref<CellValue[][]>(Array(8).fill(0).map(() => Array(8).fill(CellValue.EMPTY)))
+const _game = Array(8).fill(0).map(() => Array(8).fill(CellValue.EMPTY))
 const currentPlayer = ref<CellValue>(CellValue.BLACK)
+const router = useRouter()
+const route = useRoute()
+const room = route.query.room ?? randomStr(8)
+const channel = new GameChannel(room as string)
 
-game.value[3][3] = CellValue.WHITE
-game.value[3][4] = CellValue.BLACK
-game.value[4][3] = CellValue.BLACK
-game.value[4][4] = CellValue.WHITE
-game.value[3][2] = CellValue.BLACK
-game.value[2][2] = CellValue.WHITE
+if (!route.query.room) {
+  router.replace({ query: { room: room } })
+}
+
+_game[3][3] = CellValue.WHITE
+_game[3][4] = CellValue.BLACK
+_game[4][3] = CellValue.BLACK
+_game[4][4] = CellValue.WHITE
+
+onMounted(() => {
+  startGame()
+
+  channel.onEvent('message', onChannelEvent)
+})
+
+function onChannelEvent(event: Event | MessageEvent<any>) {
+  console.log(event)
+}
+
+function startGame() {
+  const board = document.getElementById('board') as HTMLTableElement
+  board.innerHTML = ''
+  for (let i = 0; i < 8; i++) {
+    const row = document.createElement('tr')
+
+    board.appendChild(row)
+
+    for (let j = 0; j < 8; j++) {
+      const cell = document.createElement('td')
+      const value = _game[i][j]
+
+      cell.id = `${i}-${j}`
+      cell.innerText = `${i}, ${j}, \n${value} \n${validateMove(i, j, value)}`
+      cell.addEventListener('click', () => makeMove(i, j, _game[i][j]))
+
+      row.appendChild(cell)
+
+      if (value === CellValue.EMPTY) {
+        cell.className = `cell-empty ${validateMove(i, j, _game[i][j]) ? 'can-place-piece' : ''}`
+      } else if (value === CellValue.BLACK) {
+        cell.classList.add('cell-black')
+      } else if (value === CellValue.WHITE) {
+        cell.classList.add('cell-white')
+      }
+    }
+  }
+}
 
 function invertPlayer() {
   return currentPlayer.value === CellValue.BLACK? CellValue.WHITE : CellValue.BLACK
 }
 
-function validateMove(x: number, y: number): boolean {
+function validateMove(x: number, y: number, cellValue: CellValue): boolean {
   const value = currentPlayer.value
 
-  if (game.value[x][y] !== CellValue.EMPTY) {
+  if (cellValue !== CellValue.EMPTY) {
     // La celda no está vacía, no se puede colocar una ficha aquí.
     return false
   }
@@ -43,7 +91,7 @@ function validateMove(x: number, y: number): boolean {
     let foundOpponent = false
 
     while (i >= 0 && i < 8 && j >= 0 && j < 8) {
-      const cellValue = game.value[i][j]
+      const cellValue = _game[i][j]
 
       if (cellValue === CellValue.EMPTY) {
         break
@@ -69,10 +117,10 @@ function validateMove(x: number, y: number): boolean {
   return false
 }
 
-function makeMove(x: number, y: number) {
+function makeMove(x: number, y: number, cellValue: CellValue) {
   const value = currentPlayer.value
 
-  if (!validateMove(x, y)) {
+  if (!validateMove(x, y, cellValue)) {
     // La jugada no es válida, salir.
     return
   }
@@ -93,7 +141,7 @@ function makeMove(x: number, y: number) {
     let foundOpponent = false
 
     while (i >= 0 && i < 8 && j >= 0 && j < 8) {
-      const cellValue = game.value[i][j]
+      const cellValue = _game[i][j]
 
       if (cellValue === CellValue.EMPTY) {
         break
@@ -105,7 +153,7 @@ function makeMove(x: number, y: number) {
           while (i !== x || j !== y) {
             i -= dx
             j -= dy
-            game.value[i][j] = value
+            _game[i][j] = value
           }
           validMove = true
         }
@@ -122,79 +170,22 @@ function makeMove(x: number, y: number) {
   // Si se hizo una jugada válida, cambiar de jugador.
   if (validMove) {
     currentPlayer.value = invertPlayer()
+    startGame()
+
+    channel.send('ping')
   }
 }
-
-function canPlacePiece(x: number, y: number): boolean {
-  const value = currentPlayer.value
-
-  if (game.value[x][y] !== CellValue.EMPTY) {
-    // La celda no está vacía, no se puede colocar una ficha aquí.
-    return false
-  }
-
-  // Direcciones relativas para verificar las 8 direcciones alrededor de la ficha jugada.
-  const directions = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],           [0, 1],
-    [1, -1], [1, 0], [1, 1]
-  ]
-
-  // Verificar cada dirección.
-  for (const [dx, dy] of directions) {
-    let i = x + dx
-    let j = y + dy
-    let foundOpponent = false
-
-    // Verificar si estamos dentro de los límites del tablero.
-    if (i >= 0 && i < 8 && j >= 0 && j < 8) {
-      const firstCell = game.value[i][j]
-
-      // Verificar si la primera celda en la dirección es una ficha del oponente.
-      if (firstCell !== CellValue.EMPTY && firstCell !== value) {
-        foundOpponent = true
-      }
-
-      // Continuar verificando la dirección.
-      while (i >= 0 && i < 8 && j >= 0 && j < 8) {
-        const cellValue = game.value[i][j]
-
-        if (cellValue === CellValue.EMPTY) {
-          break
-        }
-
-        if (cellValue === value) {
-          if (foundOpponent) {
-            // Si se encuentra al menos una ficha del oponente seguida por una propia
-            // en esta dirección, el movimiento es válido en esta dirección.
-            return true
-          }
-          break
-        } else {
-          // Encontrar una ficha del oponente.
-          foundOpponent = true
-        }
-
-        i += dx
-        j += dy
-      }
-    }
-  }
-
-  // Si no es válido en ninguna dirección, el movimiento no es válido.
-  return false
-}
-
 </script>
 
 <style>
 table>tr>td {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   text-align: center;
   border-color: gray;
   border-style: solid;
   border-width: 1px;
+  cursor: pointer;
 }
 
 .cell-white {
@@ -211,14 +202,14 @@ table>tr>td {
 }
 
 .can-place-piece {
-  border-color: green;
+  border-color: red;
 }
 </style>
 
 <template>
   <div>
-    <table>
-      <tr v-for="(row, rowIndex) in game" :key="rowIndex">
+    <table id="board">
+      <!-- <tr v-for="(row, rowIndex) in game" :key="rowIndex">
         <td
           v-for="(cell, cellIndex) in row"
           :key="cellIndex"
@@ -226,13 +217,13 @@ table>tr>td {
             'cell-empty': cell === CellValue.EMPTY,
             'cell-white': cell === CellValue.WHITE,
             'cell-black': cell === CellValue.BLACK,
-            'can-place-piece': canPlacePiece(cellIndex, rowIndex)
+            'can-place-piece': canPlacePiece(cellIndex, rowIndex, cell)
           }"
-          @click="makeMove(rowIndex, cellIndex)"
+          @click="makeMove(rowIndex, cellIndex, cell)"
         >
-          {{ rowIndex }}, {{ cellIndex }}, {{  cell }} {{  canPlacePiece(cellIndex, rowIndex)  }}
+          {{ rowIndex }}, {{ cellIndex }}, {{ cell }} {{  canPlacePiece(cellIndex, rowIndex, cell)  }}
         </td>
-      </tr>
+      </tr> -->
     </table>
   </div>
 </template>
