@@ -1,6 +1,7 @@
 const config = {
   iceServers: [
-    { 'url': 'stun:127.0.0.1:6120' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
   ],
   iceCandidatePoolSize: 10,
 }
