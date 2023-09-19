@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import randomStr from '@/libs/generator'
 import GameChannel from '@/libs/rtc'
+import SocketClient from '@/libs/socket'
 
 enum CellValue {
   EMPTY,
@@ -10,7 +11,8 @@ enum CellValue {
   BLACK
 }
 
-const _game = Array(8).fill(0).map(() => Array(8).fill(CellValue.EMPTY))
+const socket = new SocketClient()
+let _game: GameState = Array(8).fill(0).map(() => Array(8).fill(CellValue.EMPTY))
 const currentPlayer = ref<CellValue>(CellValue.BLACK)
 const router = useRouter()
 const route = useRoute()
@@ -27,7 +29,12 @@ _game[4][3] = CellValue.BLACK
 _game[4][4] = CellValue.WHITE
 
 onMounted(() => {
+  socket.connect()
   startGame()
+
+  if (room) {
+    socket.send('join', { room })
+  }
 
   channel.onEvent('message', onChannelEvent)
 })
@@ -119,6 +126,8 @@ function validateMove(x: number, y: number, cellValue: CellValue): boolean {
 
 function makeMove(x: number, y: number, cellValue: CellValue) {
   const value = currentPlayer.value
+  const movements: GameState = []
+  const tmpGame: GameState = [..._game]
 
   if (!validateMove(x, y, cellValue)) {
     // La jugada no es válida, salir.
@@ -153,7 +162,8 @@ function makeMove(x: number, y: number, cellValue: CellValue) {
           while (i !== x || j !== y) {
             i -= dx
             j -= dy
-            _game[i][j] = value
+            tmpGame[i][j] = value
+            movements.push([i, j])
           }
           validMove = true
         }
@@ -170,9 +180,18 @@ function makeMove(x: number, y: number, cellValue: CellValue) {
   // Si se hizo una jugada válida, cambiar de jugador.
   if (validMove) {
     currentPlayer.value = invertPlayer()
+    socket.sendMovement({
+      movements,
+      room: `${room}`,
+      player: currentPlayer.value,
+      movement: [x, y],
+      prevGameState: _game,
+      nextGameState: tmpGame,
+      timestamp: Date.now(),
+      next: 1
+    })
+    _game = tmpGame
     startGame()
-
-    channel.send('ping')
   }
 }
 </script>
