@@ -1,11 +1,13 @@
-import io from 'socket.io-client'
+import type { EventsMap, DefaultEventsMap } from '@socket.io/component-emitter'
+import io, { type Socket } from 'socket.io-client'
+import type { CellValue } from './enum'
 
 export type GameState = number[][]
 
 export interface MovementMessage {
   room: string
-  player: 1 | 2
-  next: 1 | 2
+  player: CellValue
+  next: CellValue
   movement: number[]
   movements: GameState
   prevGameState: GameState
@@ -14,8 +16,11 @@ export interface MovementMessage {
 }
 
 
-export default class SocketClient {
-  socket = io(import.meta.env.VITE_SOCKET_SERVER, { autoConnect: false })
+export default class SocketClient<
+  ServerToClientEvents extends EventsMap = DefaultEventsMap,
+  ClientToServerEvents extends EventsMap = ServerToClientEvents
+> {
+  socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(import.meta.env.VITE_SOCKET_SERVER, { autoConnect: false })
 
   constructor() {
     this.socket.on('connect', () => {
@@ -26,13 +31,7 @@ export default class SocketClient {
       console.log('Disconnected from socket server')
     })
 
-    this.socket.on('message', (data) => {
-      console.log(data)
-    })
-
-    this.socket.on('error', (error) => {
-      console.log(error)
-    })
+    this.socket.on('connect_error', (err) => console.trace(err))
   }
 
   connect() {
@@ -44,10 +43,12 @@ export default class SocketClient {
   }
 
   send(event: string, data?: any) {
+    // @ts-ignore
     this.socket.emit(event, data)
   }
 
-  on(event: string, callback: (data: any) => void) {
+  onEvent(event: string, callback: (...args: any[]) => void) {
+    // @ts-ignore
     this.socket.on(event, callback)
   }
 
