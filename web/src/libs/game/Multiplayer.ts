@@ -32,7 +32,8 @@ export interface ServerToClientEvents {
   player_joined: (player: Player) => void
 }
 
-export default class Multiplayer extends SocketClient<ServerToClientEvents, ClientToServerEvents> {
+export default class Multiplayer {
+  #socket: SocketClient<ServerToClientEvents, ClientToServerEvents>
   #room: string
   #maxPlayers: number
   #players: Map<string, Player> = new Map()
@@ -43,18 +44,19 @@ export default class Multiplayer extends SocketClient<ServerToClientEvents, Clie
     maxPlayers = 2,
     autoConnect = false
   }: MultiplayerConfig) {
-    super()
 
     this.#room = room
     this.#maxPlayers = maxPlayers
+    this.#socket = new SocketClient()
 
-    this.onEvent('room_full', () => this.#onRoomFull)
-    this.onEvent('player_join', this.#onPlayerJoin)
-    this.onEvent('player_leave', this.#onPlayerLeave)
-    this.onEvent('sync_game', this.#onSyncGame)
-    this.onEvent('connect', () => this.#onConnect())
+    this.#socket.onEvent('room_full', () => this.#onRoomFull)
+    this.#socket.onEvent('player_join', this.#onPlayerJoin)
+    this.#socket.onEvent('player_leave', this.#onPlayerLeave)
+    this.#socket.onEvent('sync_game', this.#onSyncGame)
+    this.#socket.onEvent('connect', () => this.#onConnect())
+    this.#socket.onEvent('start_game', () => this.#onStartGame)
     
-    if (autoConnect) this.connect()
+    if (autoConnect) this.#socket.connect()
   }
 
   #onConnect() {
@@ -62,7 +64,7 @@ export default class Multiplayer extends SocketClient<ServerToClientEvents, Clie
   }
 
   #joinToRoom() {
-    this.send('room_join', {
+    this.#socket.send('room_join', {
       room: this.#room,
       maxPlayers: this.#maxPlayers
     })
@@ -81,6 +83,8 @@ export default class Multiplayer extends SocketClient<ServerToClientEvents, Clie
   #onRoomFull(event: any) {
     this.onError('room_full', event)
   }
+
+  #onStartGame() {}
 
   #onSyncGame(event: any) {
     try {
