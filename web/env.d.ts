@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  VITE_SOCKET_SERVER
+  readonly VITE_SOCKET_SERVER
 }

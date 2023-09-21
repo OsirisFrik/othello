@@ -2,11 +2,9 @@
 import { ref, onMounted, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import randomStr from '@/libs/generator'
-import SocketClient from '@/libs/socket'
 import { CellValue } from '@/libs/enum'
 import Othello, { type Movement } from '@/libs/game/Othello'
 
-const socket = new SocketClient()
 const router = useRouter()
 const route = useRoute()
 const room = route.query.room ?? randomStr(8)
@@ -21,11 +19,7 @@ onBeforeMount(() => {
 })
 
 onMounted(() => {
-  socket.connect()
 
-  if (room) {
-    socket.send('join', { room })
-  }
 })
 
 function makeMove([x, y]: Movement) {

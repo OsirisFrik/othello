@@ -1,10 +1,18 @@
 import { reactive } from 'vue'
 import { CellValue } from '../enum'
 import { getKeyEnumByVal } from '../tools'
-import Multiplayer from './Multiplayer'
+import Multiplayer, { type Player } from './Multiplayer'
 
 export type Movement = [x: number, y: number]
 export type Board = CellValue[][]
+
+export interface OthelloState {
+  board: Board
+  turn: number
+  winner: number
+  moves: Movement[]
+  players: Player[]
+}
 
 export default class Othello extends Multiplayer {
   _board: Board
@@ -17,11 +25,21 @@ export default class Othello extends Multiplayer {
     [1, -1], [1, 0], [1, 1]
   ]
 
-  constructor(room: string) {
+  constructor(room: string, gameState?: GameState<OthelloState>) {
     super({
       room,
       maxPlayers: 2,
-      autoConnect: true
+      autoConnect: true,
+      gameState: gameState ?? {
+        state: {
+          board: Array(8).fill(null).map(() => Array(8).fill(null)),
+          turn: CellValue.BLACK,
+          player: CellValue.EMPTY
+        },
+        turn: CellValue.BLACK,
+        player: CellValue.EMPTY,
+        game: 'othello'
+      }
     })
     
     this._board = reactive<Board>(

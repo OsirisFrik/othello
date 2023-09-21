@@ -46,6 +46,8 @@ export class GameRoomManager {
       socketId: socket.id,
     }
 
+    console.log(room)
+
     if (!this.rooms.has(room)) {
       const players = new Map<string, Player>()
 
