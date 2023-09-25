@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "concurrently \"yarn dev:web\" \"yarn dev:serve\"",
     "dev:web": "vite ./web",
-    "dev:serve": "nodemon -r dotenv/config ./server/src/index.ts"
+    "dev:serve": "nodemon --inspect=3001 -r dotenv/config ./server/src/index.ts"
   },
   "dependencies": {
     "concurrently": "^8.2.1"

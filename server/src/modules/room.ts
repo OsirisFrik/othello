@@ -72,9 +72,10 @@ export class GameRoomManager {
   }
 
   roomJoin(socket: Socket, room: string, player: Player, config?: Partial<GameRoomClient>) {
-    console.log(`Event on room ${socket.id} by player ${player.nickname}`)
+    console.log(`Event on room ${room} by player ${player.nickname}`)
 
     if (!this.rooms.has(room)) {
+      console.log(`Room ${room} created by player ${player.nickname}`)
       const players = new Map<string, Player>()
 
       player.isOwner = true
@@ -90,12 +91,13 @@ export class GameRoomManager {
         room,
         players,
         game: config?.game,
-        maxPlayers: config?.maxPlayers ?? 1
+        maxPlayers: config?.maxPlayers ?? 2
       })
 
       console.log(`Room ${room} created`)
       socket.emit('set_owner', player)
     } else {
+      console.log(`Player ${player.nickname} tried to join room ${room}`)
       const _room = this.rooms.get(room)!
 
       if (_room.players.size >= _room.maxPlayers) {
@@ -124,5 +126,6 @@ export class GameRoomManager {
 
     socket.join(room)
     socket.emit('room_joined', _room.room, _room)
+    socket.broadcast.to(room).emit('player_join', player)
   }
 }

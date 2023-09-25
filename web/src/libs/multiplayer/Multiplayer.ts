@@ -112,6 +112,8 @@ export class Multiplayer <
   #onRoomJoined(): void {}
 
   #onSetOwner(player: Player): void {
+    console.log(`Set owner to ${player.nickname}`)
+    
     if (player.id === this.#player.id) {
       this.#player.isOwner = true
     } else {
