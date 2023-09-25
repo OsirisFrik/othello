@@ -1,26 +1,14 @@
-import type { EventsMap, DefaultEventsMap } from '@socket.io/component-emitter'
+import type { EventsMap, DefaultEventsMap, EventNames, EventParams } from '@socket.io/component-emitter'
 import io, { type Socket } from 'socket.io-client'
-import type { CellValue } from './enum'
-
-export type GameState = number[][]
-
-export interface MovementMessage {
-  room: string
-  player: CellValue
-  next: CellValue
-  movement: number[]
-  movements: GameState
-  prevGameState: GameState
-  nextGameState: GameState
-  timestamp: number
-}
-
 
 export default class SocketClient<
-  ServerToClientEvents extends EventsMap = DefaultEventsMap,
-  ClientToServerEvents extends EventsMap = ServerToClientEvents
+  ListenEvents extends EventsMap = DefaultEventsMap,
+  EmitEvents extends EventsMap = ListenEvents
 > {
-  socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(import.meta.env.VITE_SOCKET_SERVER, { autoConnect: false })
+  socket: Socket<ListenEvents, EmitEvents> = io(
+    import.meta.env.VITE_SOCKET_SERVER,
+    { autoConnect: false }
+  )
 
   constructor() {
     this.socket.on('connect', () => {
@@ -42,17 +30,11 @@ export default class SocketClient<
     this.socket.disconnect()
   }
 
-  send(event: string, data?: any) {
-    // @ts-ignore
-    this.socket.emit(event, data)
+  send<K extends EventNames<EmitEvents>>(event: K, ...args: EventParams<EmitEvents, K>) {
+    this.socket.emit(event, ...args)
   }
 
-  onEvent(event: string, callback: (...args: any[]) => void) {
-    // @ts-ignore
+  onEvent<K extends EventNames<ListenEvents>>(event: K, callback: ListenEvents[K]) {
     this.socket.on(event, callback)
-  }
-
-  sendMovement(movement: MovementMessage) {
-    this.send('movement', movement)
   }
 }

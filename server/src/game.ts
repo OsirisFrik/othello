@@ -18,7 +18,7 @@ export interface GameRoom {
 export async function validateMove(
   x: number,
   y: number,
-  game: GameState,
+  game: any,
   player: CellValue
 ): Promise<boolean> {
   console.log(x, y, game[x][y], player)

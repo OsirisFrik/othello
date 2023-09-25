@@ -3,6 +3,8 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "CommonJS",
+    "declaration": true,
+    "moduleResolution": "node",
     "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "src",
@@ -14,8 +16,17 @@
       "./src"
     ],
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true
+    // "allowSyntheticDefaultImports": true,  /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */
+    "esModuleInterop": true,          /* Emit the source alongside the sourcemaps within a single file; requires '--inlineSourceMap' or '--sourceMap' to be set. */
+    /* Experimental Options */
+    "experimentalDecorators": true,        /* Enables experimental support for ES7 decorators. */
+    "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
+
+    /* Advanced Options */
+    "skipLibCheck": true,                     /* Skip type checking of declaration files. */
+    "forceConsistentCasingInFileNames": true  /* Disallow inconsistently-cased references to the same file. */
+  },
+  "ts-node": {
+    "files": true
   }
 }

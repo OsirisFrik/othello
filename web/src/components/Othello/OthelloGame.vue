@@ -2,14 +2,20 @@
 import { ref, onMounted, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import randomStr from '@/libs/generator'
-import { CellValue } from '@/libs/enum'
-import Othello, { type Movement } from '@/libs/game/Othello'
+import { Othello, Chips, type OthelloMovement } from '@/libs/game/Othello'
+import { Player } from '@/libs/multiplayer'
+import { PlayerStore } from '@/stores/player'
 
+const playerStore = PlayerStore()
 const router = useRouter()
 const route = useRoute()
 const room = route.query.room ?? randomStr(8)
-const _game = new Othello(room as string)
+const player = new Player(playerStore.player)
+const _game = Othello.createNewGame(room as string, true, player)
 const game = ref(_game)
+
+// @ts-expect-error
+window.$game = _game
 
 
 onBeforeMount(() => {
@@ -22,7 +28,7 @@ onMounted(() => {
 
 })
 
-function makeMove([x, y]: Movement) {
+function makeMove([x, y]: OthelloMovement) {
   _game.makeMove([x, y])
 }
 </script>
@@ -64,9 +70,9 @@ table>tr>td {
           v-for="(cell, y) in row"
           :key="y"
           :class="{
-            'cell-empty': cell === CellValue.EMPTY,
-            'cell-white': cell === CellValue.WHITE,
-            'cell-black': cell === CellValue.BLACK,
+            'cell-empty': cell === Chips.EMPTY,
+            'cell-white': cell === Chips.WHITE,
+            'cell-black': cell === Chips.BLACK,
             'can-place-piece': _game.validateMove([x, y])
           }"
           @click="makeMove([x, y])"
