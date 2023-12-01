@@ -35,15 +35,20 @@ export class Othello {
   _board: Board
   #turn: Chips = Chips.BLACK
   #player: Player<OthelloPlayerState>
-  #opponent?: OthelloOpponent
+  opponent?: OthelloOpponent
   #online: boolean = false
   #room: string
   #history: Movement<OthelloMovement[], OthelloPlayerState>[] = []
 
   #directions = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],          [0, 1],
-    [1, -1], [1, 0], [1, 1]
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1]
   ]
 
   constructor(room: string, gameState: GameState<OthelloState>) {
@@ -80,7 +85,7 @@ export class Othello {
       player: this.#player
     })
 
-    this.#opponent = new OthelloOpponent(this, this.#multiplayer)
+    this.opponent = new OthelloOpponent(this, this.#multiplayer)
   }
 
   get board() {
@@ -92,21 +97,20 @@ export class Othello {
   }
 
   static createNewGame(room: string, online: boolean, player: Player): Othello {
-    return new Othello(room, new GameState<OthelloState>({
-      game: 'othello',
-      state: {
-        board: Array.from({ length: 8 },
-          () => Array.from({ length: 8 },
-            () => Chips.EMPTY
-          )
-        ),
-        turn: Chips.BLACK,
-        winner: null,
-        moves: [],
-        players: [player],
-        online
-      }
-    }))
+    return new Othello(
+      room,
+      new GameState<OthelloState>({
+        game: 'othello',
+        state: {
+          board: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => Chips.EMPTY)),
+          turn: Chips.BLACK,
+          winner: null,
+          moves: [],
+          players: [player],
+          online
+        }
+      })
+    )
   }
 
   validateMove([x, y]: OthelloMovement, turn = this.#turn): boolean {
@@ -159,7 +163,7 @@ export class Othello {
     const movements: OthelloMovement[] = [[x, y], ...this.getBeetweemChips([x, y])]
 
     if (movements.length < 2) return this._board
-    
+
     for (const movement of movements) {
       this.toggleChip(movement)
     }
@@ -176,7 +180,7 @@ export class Othello {
   }
 
   toggleTurn(): void {
-    const next = this.#turn === Chips.BLACK? Chips.WHITE : Chips.BLACK
+    const next = this.#turn === Chips.BLACK ? Chips.WHITE : Chips.BLACK
 
     if (this.hasValidMovements(next)) this.#turn = next
     else {

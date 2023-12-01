@@ -1,4 +1,7 @@
+import Debug, { Debugger } from 'debug'
 import { Server, Socket } from 'socket.io'
+
+const debug = Debug('app:room')
 
 export interface Player<P = any> {
   id: string
@@ -13,6 +16,7 @@ export interface GameRoom {
   game?: string | null
   maxPlayers: number
   players: Map<string, Player>
+  log: Debugger
 }
 
 export interface GameRoomClient extends Omit<GameRoom, 'players'> {
@@ -60,23 +64,35 @@ export class GameRoomManager {
   constructor(io: Server) {
     this.io = io
 
+    debug('Initializing GameRoomManager')
+
     this.io.on('connection', (socket) => {
+      debug('new socket connected')
+
       socket.on('room_join', this.roomJoin.bind(this, socket))
       socket.on('player_move', this.onPlayerMove.bind(this, socket))
     })
   }
 
   onPlayerMove(socket: Socket, movement: Movement) {
-    console.log(`Player ${movement.player.nickname} moved in room ${movement.room}`)
-    this.io.to(movement.room).emit('player_move', movement)
+    if (this.rooms.has(movement.room)) {
+      const room = this.rooms.get(movement.room)
+
+      room?.log(`Player ${movement.player.nickname} moved in room ${movement.room}`)
+
+      this.io.to(movement.room).emit('player_move', movement)
+    }
   }
 
   roomJoin(socket: Socket, room: string, player: Player, config?: Partial<GameRoomClient>) {
-    console.log(`Event on room ${room} by player ${player.nickname}`)
+    const log = Debug(`app:room:${room}`)
+
+    log(`Event on room ${room} by player ${player.nickname}`)
 
     if (!this.rooms.has(room)) {
-      console.log(`Room ${room} created by player ${player.nickname}`)
       const players = new Map<string, Player>()
+
+      log(`Room ${room} created by player ${player.nickname}`)
 
       player.isOwner = true
       players.set(socket.id, player)
@@ -88,20 +104,23 @@ export class GameRoomManager {
       }
 
       this.rooms.set(room, {
+        log,
         room,
         players,
         game: config?.game,
         maxPlayers: config?.maxPlayers ?? 2
       })
 
-      console.log(`Room ${room} created`)
+      log(`Room ${room} created`)
       socket.emit('set_owner', player)
     } else {
-      console.log(`Player ${player.nickname} tried to join room ${room}`)
+      log(`Player ${player.nickname} tried to join room ${room}`)
+
       const _room = this.rooms.get(room)!
 
       if (_room.players.size >= _room.maxPlayers) {
         socket.emit('room_full', _room)
+        debug(`Player ${player.nickname} tried to join room ${room}, but room is full`)
 
         return
       }

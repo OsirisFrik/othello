@@ -1,4 +1,5 @@
 import type { EventNames } from '@socket.io/component-emitter'
+import { EventEmitter } from 'events'
 
 import SocketClient from '@/libs/socket'
 import { GameRoom, type GameRoomData } from './GameRoom'
@@ -31,35 +32,33 @@ export interface EmitEvents<G = any, M = any, P = any> extends ListenEvents<G, M
 export interface ListenEvents<G = any, M = any, P = any> {
   room_joined: (room: string, config?: Partial<GameRoomData>) => void
   room_full: (room: string, config?: Partial<GameRoomData>) => void
-  player_join: (
-    player: PlayerData<P> | Player<P>,
-    room: Partial<GameRoomData>
-  ) => void
+  player_join: (player: PlayerData<P> | Player<P>, room: Partial<GameRoomData>) => void
   player_leave: (player: PlayerData<P> | Player<P>) => void
-  player_move: (movement: MovementData<M, P> | Movement<M, P>) => void
+  player_move: (movement: MovementData<M, P>) => void
   sync_game: (game: GameState<G>) => void
   start_game: (game: GameState<G>) => void
   set_owner: (player: PlayerData<P> | Player<P>) => void
 }
 
-export class Multiplayer <
+export interface Multiplayer<G, GameMovement, PlayerGameState> {
+  on(event: 'room_joined', handler: (room: string, config?: Partial<GameRoomData>) => void): this
+}
+
+export class Multiplayer<
   G,
   GameMovement,
   PlayerGameState,
   GameListenEevents extends ListenEvents<G, GameMovement, PlayerGameState> = ListenEvents<G>,
-  GameEmitEvents extends EmitEvents<G, GameMovement, PlayerGameState> = EmitEvents<G>,
-> extends EventTarget {
-  #socket: SocketClient<
-    GameListenEevents,
-    GameEmitEvents
-  >
+  GameEmitEvents extends EmitEvents<G, GameMovement, PlayerGameState> = EmitEvents<G>
+> extends EventEmitter {
+  #socket: SocketClient<GameListenEevents, GameEmitEvents>
   #room: string
   #maxPlayers: number
   #minPlayers: number
   #players: Map<string, Player> = new Map()
   #gameState: GameState<G>
   #player: Player
-  
+
   constructor({
     room,
     maxPlayers = 2,
@@ -69,7 +68,7 @@ export class Multiplayer <
     player
   }: MultiplayerConfig) {
     super()
-    
+
     this.#room = room
     this.#maxPlayers = maxPlayers
     this.#minPlayers = minPlayers
@@ -92,7 +91,7 @@ export class Multiplayer <
     this.#socket.socket.on('start_game', this.#onStartGame.bind(this))
     // @ts-expect-error
     this.#socket.socket.on('set_owner', this.#onSetOwner.bind(this))
-    
+
     if (autoConnect) this.#socket.connect()
   }
 
@@ -113,7 +112,7 @@ export class Multiplayer <
 
   #onSetOwner(player: Player): void {
     console.log(`Set owner to ${player.nickname}`)
-    
+
     if (player.id === this.#player.id) {
       this.#player.isOwner = true
     } else {
@@ -126,7 +125,7 @@ export class Multiplayer <
     if (player.id === this.#player.id) return
 
     console.log(`Player ${player.id} joined`)
-    
+
     this.#players.set(player.id, new Player(player))
 
     this.#dispatchGameEvent('player_join', new Player(player))
@@ -134,7 +133,7 @@ export class Multiplayer <
 
   #onPlayerLeave(player: PlayerData) {
     this.#players.delete(player.id)
-    
+
     this.#dispatchGameEvent('player_leave', new Player(player))
   }
 
@@ -149,7 +148,7 @@ export class Multiplayer <
   #onSyncGame(game: GameStateData<G>): void {
     try {
       this.#gameState = new GameState(game)
-      
+
       this.#dispatchGameEvent('sync_game', this.#gameState)
     } catch (err) {
       console.trace(err)
@@ -157,16 +156,14 @@ export class Multiplayer <
   }
 
   #dispatchGameEvent<K extends EventNames<ListenEvents<G>>>(event: K, ...args: any[]): boolean {
-    return super.dispatchEvent(
-      new CustomEvent(event as string, ...args)
-    )
+    return super.emit(event, ...args)
   }
 
   addGameEventListener<K extends EventNames<ListenEvents<G>>>(
     event: K,
     callback: ListenEvents<G>[K]
   ): void {
-    super.addEventListener(event as string, callback as any)
+    super.emit(event as string, callback as any)
   }
 
   playerMove(

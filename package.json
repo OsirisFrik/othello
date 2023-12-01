@@ -8,12 +8,13 @@
   "license": "MIT",
   "private": true,
   "workspaces": [
-    "./*"
+    "./server",
+    "./web"
   ],
   "scripts": {
-    "dev": "concurrently \"yarn dev:web\" \"yarn dev:serve\"",
-    "dev:web": "vite ./web",
-    "dev:serve": "nodemon --inspect=3001 -r dotenv/config ./server/src/index.ts"
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:serve\"",
+    "dev:web": "npm run dev --workspace=othello-app",
+    "dev:serve": "npm run dev --workspace=othello-server"
   },
   "dependencies": {
     "concurrently": "^8.2.1"

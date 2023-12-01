@@ -17,16 +17,13 @@ const game = ref(_game)
 // @ts-expect-error
 window.$game = _game
 
-
 onBeforeMount(() => {
   if (!route.query.room) {
     router.replace({ query: { room: room } })
   }
 })
 
-onMounted(() => {
-
-})
+onMounted(() => {})
 
 function makeMove([x, y]: OthelloMovement) {
   _game.makeMove([x, y])
@@ -34,7 +31,7 @@ function makeMove([x, y]: OthelloMovement) {
 </script>
 
 <style>
-table>tr>td {
+table > tr > td {
   width: 60px;
   height: 60px;
   text-align: center;
@@ -64,6 +61,13 @@ table>tr>td {
 
 <template>
   <div>
+    <p>
+      player: <span>{{ player.nickname }} {{ player.isOwner }}</span>
+    </p>
+    <p>
+      opponent:
+      <span>{{ game.opponent?.player?.nickname }} {{ game.opponent?.player?.isOwner }}</span>
+    </p>
     <table id="board">
       <tr v-for="(row, x) in game.board" :key="x">
         <td
@@ -77,7 +81,7 @@ table>tr>td {
           }"
           @click="makeMove([x, y])"
         >
-          {{ x }}, {{ y }}, {{ cell }} {{  _game.validateMove([x, y])  }}
+          {{ x }}, {{ y }}, {{ cell }} {{ _game.validateMove([x, y]) }}
         </td>
       </tr>
     </table>
